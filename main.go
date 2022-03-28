@@ -76,9 +76,20 @@ func main() {
 		}
 	}
 
-	bz, _ := json.MarshalIndent(&evmos, "", "  ")
-	fmt.Println(string(bz))
+	genesisMap, err := loadEvmosGenesisToMap(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
 
+	appState := genesisMap["app_state"].(map[string]interface{})
+	appState["auth"] = evmos.AppState.Auth
+	appState["bank"] = evmos.AppState.Bank
+	appState["evm"] = evmos.AppState.Evm
+
+	genesisMap["app_state"] = appState
+
+	bz, _ := json.MarshalIndent(genesisMap, "", "  ")
+	fmt.Println(string(bz))
 }
 
 func needAddToAuth(act DumpAccount) bool {
@@ -112,6 +123,21 @@ func loadEvmosGenesis(fname string) (*Genesis, error) {
 	}
 
 	return &genesisData, nil
+}
+
+func loadEvmosGenesisToMap(fname string) (map[string]interface{}, error) {
+	f, err := os.Open(fname)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	var genesisData = make(map[string]interface{})
+
+	if err := json.NewDecoder(f).Decode(&genesisData); err != nil {
+		return nil, err
+	}
+
+	return genesisData, nil
 }
 
 func loadMondoGensis(fname string) (*Dump, error) {
